@@ -60,7 +60,7 @@ Nov 24, 2020 - Feb 22 2021 (UTC)
 
 Branch is tool of github for cooperation.
 
-**\- for handling admission to main branch, efficient version management (need to find how to use) **
+\- **for handling admission to main branch, efficient version management (need to find how to use)**
 
 *  jerry: Youngin-Kwon
 * ho: Yeongho-Lee
