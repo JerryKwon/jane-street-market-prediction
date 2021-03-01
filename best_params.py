@@ -13,30 +13,45 @@ class Resnet1dcnn:
 
 class ResnetLinear:
     def __init__(self, selection):
-        self.set_params(selection)
+        self.hidden_layer, self.n_layers, self.decreasing, self.f_act, self.dropout, self.embed_dim, self.optimizer, self.learning_rate, self.weight_decay= self.set_params(selection)
 
     def set_params(self, selection):
+        print(type(selection))
+        hidden_layer = None
+        n_layers = None
+        decreasing = None
+        f_act = None
+        dropout = None
+        embed_dim = None
+        optimizer = None
+        learning_rate = None
+        weight_decay = None
+
+        # selection might be string
         if selection == 1:
-            self.hidden_layer = 512
-            self.n_layers = 3
-            self.decreasing = True
-            self.f_act = nn.LeakyReLU()
-            self.dropout = 0.34213845887711536
-            self.embed_dim = 10
-            self.optimizer = optim.Adam
-            self.learning_rate = 0.0009437366580626903
-            self.weight_decay = 1.0288953711004482e-08
+            print("hello")
+            hidden_layer = 512
+            n_layers = 3
+            decreasing = True
+            f_act = nn.LeakyReLU()
+            dropout = 0.34213845887711536
+            embed_dim = 10
+            optimizer = optim.Adam
+            learning_rate = 0.0009437366580626903
+            weight_decay = 1.0288953711004482e-08
 
         elif selection == 2:
-            self.hidden_layer = 256
-            self.n_layers = 2
-            self.decreasing = False
-            self.f_act = nn.SiLU()
-            self.dropout = 0.49627361377205387
-            self.embed_dim = 0
-            self.optimizer = optim.Adam
-            self.learning_rate = 1.3352033297894747e-05
-            self.weight_decay = 8.62843672831598e-08
+            hidden_layer = 256
+            n_layers = 2
+            decreasing = False
+            f_act = nn.SiLU()
+            dropout = 0.49627361377205387
+            embed_dim = 0
+            optimizer = optim.Adam
+            learning_rate = 1.3352033297894747e-05
+            weight_decay = 8.62843672831598e-08
+
+        return hidden_layer, n_layers, decreasing, f_act, dropout, embed_dim, optimizer, learning_rate, weight_decay
 
 class EmbedNN:
     def __init__(self, selection):
