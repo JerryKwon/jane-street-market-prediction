@@ -1,4 +1,5 @@
 import io
+import re
 import os
 import platform
 import warnings
@@ -65,15 +66,16 @@ class DataLoader:
                 os.system(f"kaggle config set -n path -v {self.data_path}")
             print("kaggle json setting complete")
 
-            # download dataset
-            os.system(f"kaggle competitions download -c jane-street-market-prediction")
-            zip_target = os.path.join(self.jane_path,'jane-street-market-prediction.zip')
-            zip_file = zipfile.ZipFile(zip_target)
-            zip_file.extractall(self.jane_path)
+            if os.path.isdir(os.path.join(self.data_path,'competitions')) == False:
+                # download dataset
+                os.system(f"kaggle competitions download -c jane-street-market-prediction")
+                zip_target = os.path.join(self.jane_path,'jane-street-market-prediction.zip')
+                zip_file = zipfile.ZipFile(zip_target)
+                zip_file.extractall(self.jane_path)
 
-            # install custom package(Linux Only)
-            if self.os_env == "Linux":
-                os.system(f"rpm -ivh {os.path.join(self.jane_path,'janestreet','competition.cpython-37m-x86_64-linux-gnu.so')}")
+                # install custom package(Linux Only)
+                if self.os_env == "Linux":
+                    os.system(f"rpm -ivh {os.path.join(self.jane_path,'janestreet','competition.cpython-37m-x86_64-linux-gnu.so')}")
 
         else:
             raise Exception("please locate kaggle.json file for downloading dataset")
@@ -97,12 +99,18 @@ class DataLoader:
 
         return df_train, df_features, df_example_test, df_example_sample_submission
 
-    def save_model(self, model, fname):
+    def save_model(self, model_state, model_path):
 
-        model_path = os.path.join(self.model_path,fname)
-        torch.save(model.state_dict(), model_path)
+        torch.save(model_state, model_path)
 
-    def save_result(self, data, fname):
+    def load_model(self, model, model_name):
 
-        result_path = os.path.join(self.result_path,fname)
-        data.to_pickle(result_path)
+        model_files = os.listdir(self.model_path)
+        model_files_path = [ os.path.join(self.model_path, model_file) for model_file in model_files if model_name in model_file]
+
+        models = []
+        for model_file_path in model_files_path:
+            model.load_state_dict(torch.load(model_file_path))
+            models.append(model)
+
+        return models
