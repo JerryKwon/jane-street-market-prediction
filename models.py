@@ -49,10 +49,10 @@ class ResidualBlock(nn.Module):
         return out
 
 # Resnet-1dcnn
-class CustomResNet(nn.Module):
+class Resnet1dcnn(nn.Module):
     def __init__(self, block: Type[ResidualBlock], layers: List[int], dropout=0.2, num_feature=130,
                  hidden_layers=[512, 256], num_classes: int = 5):
-        super(CustomResNet, self).__init__()
+        super(Resnet1dcnn, self).__init__()
         self.inplanes = 64
         self.block = block
         self.dropout = dropout
@@ -135,7 +135,7 @@ class CustomResNet(nn.Module):
 
 # ResnetLinear
 class ResnetLinear(nn.Module):
-    def __init__(self, num_features, num_classes, hidden_layer, n_layers, decreasing, f_act, dropout, embed_dim, df_features, device, verbose=False):
+    def __init__(self, num_features, num_tags, num_classes, hidden_layer, n_layers, decreasing, f_act, dropout, embed_dim, df_features, device, verbose=False):
         super(ResnetLinear, self).__init__()
 
         self.hidden_layer = hidden_layer
@@ -165,7 +165,7 @@ class ResnetLinear(nn.Module):
             self.emb_mode = True
 
             # df_features tag num is 29(fixed value)
-            self.n_feat_tags = 29
+            self.n_feat_tags = num_tags
 
             self.device = device
 
@@ -316,9 +316,9 @@ class FFN(nn.Module):
         return x
 
 # Embed-NN Model
-class Emb_NN_Model(nn.Module):
+class EmbedNN(nn.Module):
     def __init__(self, num_features, num_tags, num_classes, hidden_layer, n_layers, decreasing, f_act, dropout, embed_dim, df_features, device, verbose=False):
-        super(Emb_NN_Model, self).__init__()
+        super(EmbedNN, self).__init__()
 
         self.num_features = num_features
         self.n_feat_tags = num_tags
