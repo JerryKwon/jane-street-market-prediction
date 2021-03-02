@@ -20,7 +20,7 @@ def main():
     parser.add_argument('--model_type', type=str, default=None, help='select model type [Resnet1dcnn, ResnetLinear, EmbedNN]')
     parser.add_argument('--submit_type',type=str, default=None, help='select sumbission type [csv, package]')
     parser.add_argument('--cv_type', type=str, help='select cv type [SGCV, GTCV, random(for Resnet 1dcnn only)]')
-    parser.add_argument('--selection', type=str, help='select params figured out [1, 2] (ResnetLinear, EmbedNN only)')
+    parser.add_argument('--selection', type=int, help='select params figured out [1, 2] (ResnetLinear, EmbedNN only)')
     parser.add_argument('--pretrained', type=str2bool, help='select to use pretrained weight for inference')
 
     args = parser.parse_args()
@@ -38,12 +38,12 @@ def main():
 
     if pretrained == False:
 
-        model = data_utils.train(model_type,X,y,cv_idxes, selection, epochs=1, batch_size=4096, early_stopping=True)
+        model = data_utils.train(model_type, X, y, cv_type, cv_idxes, selection, epochs=100, batch_size=4096, early_stopping=7)
     else:
         model, optimizer, learning_rate, weight_decay = data_utils.set_params(model_type,selection)
 
     if submit_type == "csv":
-        csv_submission = data_utils.csv_inference(model, model_type)
+        csv_submission = data_utils.csv_inference(model, model_type, cv_type, selection)
         data_utils.save_csv(csv_submission,f"{model_type}_{cv_type}_{selection}_submission.csv")
     elif submit_type == "package":
         data_utils.package_inference(model, model_type)
