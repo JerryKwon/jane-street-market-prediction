@@ -174,7 +174,7 @@ class DataUtils:
 
         return X,y, cv_idxes
 
-    def train(self, model_type, X, y, cv_idxes, selection=None, epochs=100, batch_size=4096, early_stopping=True):
+    def train(self, model_type, X, y, cv_type, cv_idxes, selection=None, epochs=100, batch_size=4096, early_stopping=7):
 
         if (model_type == "Resnet1dcnn") and (selection is not None):
             raise Exception("Resnet1dcnn is already set default params")
@@ -184,15 +184,16 @@ class DataUtils:
         model, optimizer, learning_rate, weight_decay = self.set_params(model_type, selection)
 
         if model_type == "Resnet1dcnn":
-            self.train_resnet1dcnn(model, X, y, cv_idxes, optimizer, learning_rate, weight_decay, epochs, batch_size, early_stopping)
+            self.train_resnet1dcnn(model, X, y, cv_type, cv_idxes, selection, optimizer, learning_rate, weight_decay, epochs, batch_size, early_stopping)
 
         else:
-            self.train_remainder(model, X, y, cv_idxes, optimizer, learning_rate, weight_decay, epochs, batch_size, early_stopping)
+            self.train_remainder(model, X, y, cv_type, cv_idxes, selection, optimizer, learning_rate, weight_decay, epochs, batch_size, early_stopping)
 
         return model
 
-    def csv_inference(self, model, model_type):
-        models = self.data_loader.load_model(model, model_type)
+    def csv_inference(self, model, model_type, cv_type, selection):
+        model_name = f"{cv_type}_{selection}_{model_type}"
+        models = self.data_loader.load_model(model, model_name)
 
         for idx,row in tqdm(self.df_example_test.iterrows()):
             if row["weight"].item() > 0:
@@ -234,9 +235,12 @@ class DataUtils:
                 pred_df.action = 0
             env.predict(pred_df)
 
-    def train_resnet1dcnn(self, model, X, y, cv_idxes, optimizer, learning_rate, weight_decay, epochs, batch_size, patience=7):
+    def train_resnet1dcnn(self, model, X, y, cv_type, cv_idxes, selection, optimizer, learning_rate, weight_decay, epochs, batch_size, patience=7):
         model_home = self.data_loader.model_path
         model_name = model.__class__.__name__
+
+        IS_ES = True if patience > 0 else False
+        print(f"Early Stopping: {IS_ES}; patience: {int(patience)}")
 
         train_dataset, valid_dataset = cv_idxes
         train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
@@ -334,7 +338,7 @@ class DataUtils:
 
             print(f"EPOCH:{epoch+1}|{epochs}; loss(train/valid):{epoch_loss:.4f}/{valid_loss:.4f}; acc(train/valid):{epoch_acc:.4f}/{valid_acc:.4f}; auc(train/valid):{epoch_auc:.4f}/{valid_auc:.4f}; utility(train/valid):{epoch_util:.4f}/{valid_util:.4f}")
 
-            model_weights = os.path.join(model_home, f"{model_name}.pth")
+            model_weights = os.path.join(model_home, f"{cv_type}_{selection}_{model_name}.pth")
             if patience > 0:
                 es(valid_auc, model, model_path=model_weights)
                 if es.early_stop:
@@ -343,10 +347,15 @@ class DataUtils:
 
         self.data_loader.save_model(model.state_dict(), model_weights)
 
-    def train_remainder(self, model, X, y, cv_idxes, optimizer, learning_rate, weight_decay, epochs, batch_size, patience=7):
+    def train_remainder(self, model, X, y, cv_type, cv_idxes, selection, optimizer, learning_rate, weight_decay, epochs, batch_size, patience=7):
         model_home = self.data_loader.model_path
         model_name = model.__class__.__name__
 
+        self.model = model
+        self.optimizer = optimizer
+
+        IS_ES = True if patience > 0 else False
+        print(f"Early Stopping: {IS_ES}; patience: {patience}")
         for _fold, cv_idx in enumerate(cv_idxes):
             print(f'Fold{_fold}:'+'.'*20)
 
@@ -366,13 +375,13 @@ class DataUtils:
             self.seed_torch(seed=self.entire_seed)
             torch.cuda.empty_cache()
 
-            model = model.to(self.device)
+            model = self.model.to(self.device)
             criterion = nn.BCEWithLogitsLoss()
-            optimizer = optimizer(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+            optimizer = self.optimizer(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
             es = None
             if patience > 0:
-                es=EarlyStopping(patience,mode="max")
+                es=EarlyStopping(self.data_loader,patience,mode="max")
             for epoch in tqdm(range(epochs)):
 
                 running_loss = 0.0
@@ -456,7 +465,7 @@ class DataUtils:
 
                 print(f"EPOCH:{epoch+1}|{epochs}; loss(train/valid):{epoch_loss:.4f}/{valid_loss:.4f}; acc(train/valid):{epoch_acc:.4f}/{valid_acc:.4f}; auc(train/valid):{epoch_auc:.4f}/{valid_auc:.4f}; utility(train/valid):{epoch_util:.4f}/{valid_util:.4f}")
 
-                model_weights = os.path.join(model_home, f"{model_name}_{_fold}.pth")
+                model_weights = os.path.join(model_home, f"{cv_type}_{selection}_{model_name}_{_fold}.pth")
                 if patience > 0:
                     es(valid_auc, model, model_path=model_weights)
                     if es.early_stop:
@@ -510,7 +519,7 @@ class DataUtils:
             learning_rate = best_params.learning_rate
             weight_decay = best_params.weight_decay
 
-            model = EmbedNN(self, num_features=130, num_tags=29, num_classes=5, hidden_layer=hidden_layer, n_layers=n_layers, decreasing=decreasing, f_act=f_act, dropout=dropout, embed_dim=embed_dim, df_features=self.df_features, device=self.device)
+            model = EmbedNN(num_features=130, num_tags=29, num_classes=5, hidden_layer=hidden_layer, n_layers=n_layers, decreasing=decreasing, f_act=f_act, dropout=dropout, embed_dim=embed_dim, df_features=self.df_features, device=self.device)
 
         model = model.to(self.device)
 
@@ -573,7 +582,7 @@ class DataUtils:
 
     def save_csv(self, df_submission, fname):
         submission_path = os.path.join(self.data_loader.result_path,fname)
-        df_submission.to_csv(submission_path)
+        df_submission.to_csv(submission_path, index=False)
 
 """
 The codes from 'Optimise Speed of Filling-NaN Function'
